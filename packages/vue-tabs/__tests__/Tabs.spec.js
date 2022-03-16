@@ -1,13 +1,20 @@
 import { mount, createLocalVue } from '@vue/test-utils'
 import { setHash } from '@hiendv/tabs'
 import VueRouter from 'vue-router'
+import { alert, zap } from 'octicons-vue'
 import { Tabs, Tab } from '../src/main.js'
 
 let localVue = null
+const transitionStub = () => ({
+  render: function (h) {
+    return this.$options._renderChildren
+  }
+})
 
 beforeAll(() => {
   localVue = createLocalVue()
-  localVue.component('tab', Tab)
+  localVue.component('Tab', Tab)
+  localVue.component('Transition', transitionStub())
 })
 
 afterAll(() => {
@@ -15,7 +22,7 @@ afterAll(() => {
 })
 
 describe('Tabs', () => {
-  it('renders', () => {
+  it('renders', async () => {
     const wrapper = mount(Tabs, {
       slots: {
         default: `
@@ -29,12 +36,18 @@ describe('Tabs', () => {
     expect(wrapper.html()).toMatchSnapshot()
 
     wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
     expect(wrapper.html()).toMatchSnapshot()
     expect(wrapper.emitted()['update:show']).toStrictEqual([[1]])
   })
 
   it('renders without slots', () => {
-    const wrapper = mount(Tabs)
+    const wrapper = mount(Tabs, { stubs: { transition: transitionStub() } })
+    expect(wrapper.html()).toMatchSnapshot()
+  })
+
+  it('renders without slots but kept alive', () => {
+    const wrapper = mount(Tabs, { stubs: { transition: transitionStub() }, propsData: { keepAlive: true } })
     expect(wrapper.html()).toMatchSnapshot()
   })
 
@@ -75,7 +88,7 @@ describe('Tabs', () => {
     expect(wrapper.html()).toMatchSnapshot()
   })
 
-  it('renders with custom navigation', () => {
+  it('renders with custom navigation', async () => {
     const wrapper = mount(Tabs, {
       propsData: {
         show: 1
@@ -110,14 +123,14 @@ describe('Tabs', () => {
     })
 
     wrapper.find('a').trigger('click')
-
+    await wrapper.vm.$nextTick()
     expect(wrapper.html()).toMatchSnapshot()
     expect(wrapper.props()).toMatchObject({
       show: 0
     })
   })
 
-  it('renders with hashes', () => {
+  it('renders with hashes', async () => {
     setHash('two')
 
     const wrapper = mount(Tabs, {
@@ -130,9 +143,28 @@ describe('Tabs', () => {
       localVue
     })
 
+    await wrapper.vm.$nextTick()
     expect(wrapper.html()).toMatchSnapshot()
     wrapper.find('a').trigger('click')
     expect(window.location.hash).toEqual('#one')
+  })
+
+  it('renders with icons', () => {
+    const wrapper = mount(Tabs, {
+      mocks: {
+        alert,
+        zap
+      },
+      slots: {
+        default: `
+          <tab title="One" :icon="alert"><div>One Content</div></tab>
+          <tab title="Two" :icon="zap"><div>Two Content</div></tab>
+        `
+      },
+      localVue
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
   })
 
   it('renders with hashes from vue-router', () => {
@@ -169,7 +201,7 @@ describe('Tabs', () => {
     expect(window.location.toString()).toEqual('http://localhost/#/')
   })
 
-  it('renders <tab> without slots', () => {
+  it('renders <tab> without slots', async () => {
     const wrapper = mount(Tabs, {
       slots: {
         default: `
@@ -183,6 +215,7 @@ describe('Tabs', () => {
     expect(wrapper.html()).toMatchSnapshot()
 
     wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
     expect(wrapper.html()).toMatchSnapshot()
     expect(wrapper.emitted()['update:show']).toStrictEqual([[1]])
   })
@@ -206,7 +239,7 @@ describe('Tabs', () => {
     expect(wrapper.emitted()['update:show']).toBeFalsy()
   })
 
-  it('renders end <tab>', () => {
+  it('renders end <tab>', async () => {
     const wrapper = mount(Tabs, {
       slots: {
         default: `
@@ -220,7 +253,155 @@ describe('Tabs', () => {
     expect(wrapper.html()).toMatchSnapshot()
 
     wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
     expect(wrapper.html()).toMatchSnapshot()
     expect(wrapper.emitted()['update:show']).toStrictEqual([[1]])
+  })
+
+  it('renders with individual custom navigation', async () => {
+    const wrapper = mount(Tabs, {
+      slots: {
+        default: `
+          <tab title="One"><div>One Content</div></tab>
+          <tab title="Two"><div>Two Content</div></tab>
+          <tab>
+            <button slot="nav" slot-scope="data" :class="data.class" @click.prevent="data.on.click">Foobar</button>
+            <div>Three Content</div>
+          </tab>
+        `
+      },
+      localVue
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+    expect(wrapper.emitted()['update:show']).toStrictEqual([[2]])
+  })
+
+  it('renders with individual custom navigation without using data', async () => {
+    const wrapper = mount(Tabs, {
+      slots: {
+        default: `
+          <tab title="One"><div>One Content</div></tab>
+          <tab title="Two"><div>Two Content</div></tab>
+          <tab>
+            <button slot="nav">Foobar</button>
+            <div>Three Content</div>
+          </tab>
+        `
+      },
+      localVue
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.find('button').trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+    expect(wrapper.emitted()['update:show']).toBeFalsy()
+  })
+
+  it('renders with keep-alive', async () => {
+    const render = jest.fn(h => {
+      return h('p', 'Two')
+    })
+
+    const comp = {
+      render
+    }
+
+    const wrapper = mount(Tabs, {
+      propsData: {
+        keepAlive: true
+      },
+      slots: {
+        default: `
+          <tab title="One">One</tab>
+          <tab title="Two"><comp /></tab>
+        `
+      },
+      stubs: {
+        comp
+      },
+      localVue
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(0).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+
+    expect(render.mock.calls.length).toBe(1)
+  })
+
+  it('holds', async () => {
+    const wrapper = mount(Tabs, {
+      propsData: {
+        hold: true
+      },
+      slots: {
+        default: `
+          <tab title="One"><div>One Content</div></tab>
+          <tab title="Two"><div>Two Content</div></tab>
+        `
+      },
+      localVue
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+    expect(wrapper.emitted()['update:show']).toBeFalsy()
+  })
+
+  it('holds with condition', async () => {
+    const wrapper = mount(Tabs, {
+      propsData: {
+        hold (item, index) {
+          return index % 2 === 1
+        }
+      },
+      slots: {
+        default: `
+          <tab title="One"><div>One Content</div></tab>
+          <tab title="Two"><div>Two Content</div></tab>
+        `
+      },
+      localVue
+    })
+
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(0).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(1).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+
+    wrapper.findAll('.item').at(0).trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.html()).toMatchSnapshot()
+
+    expect(wrapper.emitted()['update:show']).toStrictEqual([[0], [0]])
   })
 })

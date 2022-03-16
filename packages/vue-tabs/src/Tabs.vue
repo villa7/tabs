@@ -1,26 +1,32 @@
 <template>
   <div :class="theme.tabs">
-    <slot name="nav" :items="slotProps">
+    <slot name="nav" :items="items">
       <nav :class="theme.items">
-        <a
-          v-for="(props, index) in slotProps" :key="index"
+        <tab-item
+          v-for="(item, index) in items" :key="index"
+          :nav="navs[index]"
           :class="{
             [theme.item]: true,
             [theme['item--active']]: isActive(index),
-            [theme['item--end']]: props.end
-          }" :href="`#${props.hash || ''}`"
-          @click.prevent="itemClicked(index)" v-on="listeners[index]"
-        ><octicon
-          v-if="props.icon.attrs()" :icon="props.icon"
-          :class-name="theme.octicon"
-        /> {{ props.title }}</a>
+            [theme['item--end']]: item.end
+          }" :item="item"
+          @click.prevent="itemClicked(index)"
+          v-on="listeners[index]"
+        />
       </nav>
     </slot>
     <transition
       tag="div" name="slide-down"
       mode="out-in"
     >
+      <keep-alive v-if="keepAlive" :max="5">
+        <tab-panel-stateful
+          :key="active" :class="theme.panel"
+          :item="activePanel"
+        />
+      </keep-alive>
       <tab-panel
+        v-else
         :key="active" :class="theme.panel"
         :item="activePanel"
       />
@@ -31,11 +37,18 @@
 @import "assets/transitions/slide-down";
 </style>
 <script>
-import { Octicon } from 'octicons-vue'
 import { setHash, themeDefault } from '@hiendv/tabs'
+import TabItem from './TabItem'
 import TabPanel from './TabPanel'
+import TabPanelStateful from './TabPanelStateful'
+
 export default {
-  components: { TabPanel, Octicon },
+  components: { TabItem, TabPanel, TabPanelStateful },
+  provide () {
+    return {
+      theme: this.theme
+    }
+  },
   props: {
     theme: {
       type: Object,
@@ -46,6 +59,14 @@ export default {
     show: {
       type: Number,
       default: 0
+    },
+    keepAlive: {
+      type: Boolean,
+      default: false
+    },
+    hold: {
+      type: [Boolean, Function],
+      default: false
     }
   },
   data () {
@@ -58,8 +79,11 @@ export default {
     validChildren () {
       return this.slots.filter(vnode => vnode && vnode.fnOptions && vnode.fnOptions.name === 'Tab' && vnode.data)
     },
-    slotProps () {
+    items () {
       return this.validChildren.map(vnode => vnode.data.props)
+    },
+    navs () {
+      return this.validChildren.map(vnode => vnode.data.scopedSlots.nav)
     },
     listeners () {
       return this.validChildren.map(vnode => vnode.data.listeners)
@@ -74,11 +98,13 @@ export default {
       handler (val) {
         this.active = val
       }
+    },
+    items () {
+      this.syncActiveHash()
     }
   },
   created () {
     this.loadSlots()
-    this.syncActiveHash()
   },
   updated () {
     // Because $slots is not reactive we need these below lines for hot-reloading
@@ -98,8 +124,16 @@ export default {
       return (this.$route ? this.$route.hash : window.location.hash).substring(1)
     },
     itemClicked (index) {
-      const item = this.slotProps[index]
+      const item = this.items[index]
       if (item.ghost) {
+        return
+      }
+
+      if (typeof this.hold === 'boolean' && this.hold) {
+        return
+      }
+
+      if (typeof this.hold === 'function' && this.hold(item, index)) {
         return
       }
 
@@ -114,7 +148,7 @@ export default {
     },
     setHash (index) {
       const hash = this.currentHash()
-      const item = this.slotProps[index]
+      const item = this.items[index]
       if (hash === item.hash) {
         return
       }
@@ -132,7 +166,7 @@ export default {
     },
     syncActiveHash () {
       const hash = this.currentHash()
-      const index = this.slotProps.findIndex(element => {
+      const index = this.items.findIndex(element => {
         return element.hash === hash
       })
 

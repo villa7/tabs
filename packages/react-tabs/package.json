@@ -1,0 +1,22 @@
+{
+  "name": "@hiendv/react-tabs",
+  "description": "Tabs component for React.js",
+  "version": "0.12.5",
+  "main": "dist/common.js",
+  "module": "dist/es.js",
+  "author": "Theodore Kluge",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@hiendv/tabs": "^0.12.5",
+    "classnames": "^2.3.1",
+    "octicons-react": "^1.0.9"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "repository": "https://github.com/hiendv/tabs/tree/master/packages/react-tabs"
+}

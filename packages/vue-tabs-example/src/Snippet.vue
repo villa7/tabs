@@ -1,11 +1,10 @@
 <script>
 import Prism from 'prismjs/components/prism-core.js'
-
-require('prismjs/components/prism-markup.js')
-require('prismjs/components/prism-clike.js')
-require('prismjs/components/prism-javascript.js')
-require('prismjs/components/prism-bash.js')
-require('prismjs/components/prism-css.js')
+import 'prismjs/components/prism-markup.js'
+import 'prismjs/components/prism-clike.js'
+import 'prismjs/components/prism-javascript.js'
+import 'prismjs/components/prism-bash.js'
+import 'prismjs/components/prism-css.js'
 
 export default {
   functional: true,
@@ -34,7 +33,7 @@ export default {
     }
 
     const codeBlock = h('code', {
-      class: [ ctx.data.class, className ],
+      class: [ctx.data.class, className],
       domProps: {
         innerHTML: Prism.highlight(code || '', prismLanguage)
       }
@@ -44,7 +43,7 @@ export default {
       return codeBlock
     }
 
-    return h('pre', { class: [ ctx.data.class, className ], style: ctx.data.staticStyle }, [ codeBlock ])
+    return h('pre', { class: [ctx.data.class, className], style: ctx.data.staticStyle }, [codeBlock])
   }
 }
 </script>

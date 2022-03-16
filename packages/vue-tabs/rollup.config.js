@@ -1,8 +1,8 @@
 import path from 'path'
-import commonjs from 'rollup-plugin-commonjs'
-import resolve from 'rollup-plugin-node-resolve'
+import commonjs from '@rollup/plugin-commonjs'
+import resolve from '@rollup/plugin-node-resolve'
 import vue from 'rollup-plugin-vue'
-import buble from 'rollup-plugin-buble'
+import buble from '@rollup/plugin-buble'
 import postcss from 'rollup-plugin-postcss'
 
 const reslv = p => {
@@ -51,7 +51,17 @@ export default [
       postcss({
         modules: {
           generateScopedName: '[name]__[local]'
-        }
+        },
+        use: [
+          [
+            'sass',
+            {
+              includePaths: [
+                reslv('../../node_modules')
+              ]
+            }
+          ]
+        ]
       }),
       vue({
         style: {
@@ -62,7 +72,9 @@ export default [
           }
         }
       }),
-      buble()
+      buble({
+        objectAssign: 'Object.assign'
+      })
     ]
   }
 ]
